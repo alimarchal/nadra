@@ -28,7 +28,7 @@ export default function AuthCardLayout({
                 backgroundPosition: 'center',
             }}
         >
-            <div className="absolute inset-0 bg-black/35" />
+            <div className="absolute inset-0 bg-black/30" />
             <div className="relative z-10 flex w-full max-w-md flex-col gap-6">
                 <div className="flex flex-col gap-6">
                     <Card className="rounded-xl">
