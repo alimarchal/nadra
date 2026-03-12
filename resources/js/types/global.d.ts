@@ -5,6 +5,10 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            flash: {
+                success?: string;
+                error?: string;
+            };
             sidebarOpen: boolean;
             [key: string]: unknown;
         };
