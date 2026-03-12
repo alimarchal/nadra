@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
-import { type ReactNode, useCallback, useRef, useState } from 'react';
+import {  useCallback, useRef, useState } from 'react';
+import type {ReactNode} from 'react';
 import { Button } from '@/components/ui/button';
 
 type ConfirmModalProps = {
@@ -46,7 +47,9 @@ export function ConfirmModal({
     const panelRef = useRef<HTMLDivElement>(null);
     const styles = variantStyles[variant];
 
-    if (!open) return null;
+    if (!open) {
+return null;
+}
 
     return (
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
@@ -120,12 +123,12 @@ export function useConfirmModal() {
     const handleConfirm = useCallback(() => {
         state.resolve?.(true);
         setState({ open: false, resolve: null });
-    }, [state.resolve]);
+    }, [state]);
 
     const handleCancel = useCallback(() => {
         state.resolve?.(false);
         setState({ open: false, resolve: null });
-    }, [state.resolve]);
+    }, [state]);
 
     return {
         open: state.open,

@@ -1,5 +1,6 @@
 import { Lock } from 'lucide-react';
-import { type FormEvent, useCallback, useRef, useState } from 'react';
+import {  useCallback, useRef, useState } from 'react';
+import type {FormEvent} from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,9 @@ export function PasswordConfirmModal({
         }
     };
 
-    if (!open) return null;
+    if (!open) {
+return null;
+}
 
     return (
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
@@ -152,12 +155,12 @@ export function usePasswordConfirmModal() {
     const handleConfirmed = useCallback(() => {
         state.resolve?.(true);
         setState({ open: false, resolve: null });
-    }, [state.resolve]);
+    }, [state]);
 
     const handleCancel = useCallback(() => {
         state.resolve?.(false);
         setState({ open: false, resolve: null });
-    }, [state.resolve]);
+    }, [state]);
 
     return {
         open: state.open,
