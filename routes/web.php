@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\NadraVerifications\NadraVerificationController;
 use App\Http\Controllers\Users\UserController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -14,6 +15,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('permission:user.view|user.create|user.update|user.delete')
         ->group(function (): void {
             Route::resource('users', UserController::class)->except(['show']);
+        });
+
+    Route::middleware('permission:nadra-verification.view|nadra-verification.create|nadra-verification.update|nadra-verification.delete')
+        ->group(function (): void {
+            Route::resource('nadra-verifications', NadraVerificationController::class);
+            Route::post('nadra-verifications/{nadra_verification}/call-api', [NadraVerificationController::class, 'callApi'])
+                ->name('nadra-verifications.call-api')
+                ->middleware('permission:nadra-verification.call-api');
+            Route::post('nadra-verifications/{nadra_verification}/last-result', [NadraVerificationController::class, 'getLastResult'])
+                ->name('nadra-verifications.last-result')
+                ->middleware('permission:nadra-verification.call-api');
         });
 });
 

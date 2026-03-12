@@ -51,6 +51,12 @@ class HandleInertiaRequests extends Middleware
                     'deleteUsers' => $user?->can('user.delete') ?? false,
                     'assignRoles' => $user?->can('user.assign-role') ?? false,
                     'assignPermissions' => $user?->can('user.assign-permission') ?? false,
+                    'viewNadraVerifications' => $user?->can('nadra-verification.view') ?? false,
+                    'viewAllNadraVerifications' => $user?->can('nadra-verification.view-all') ?? false,
+                    'createNadraVerifications' => $user?->can('nadra-verification.create') ?? false,
+                    'updateNadraVerifications' => $user?->can('nadra-verification.update') ?? false,
+                    'deleteNadraVerifications' => $user?->can('nadra-verification.delete') ?? false,
+                    'callNadraApi' => $user?->can('nadra-verification.call-api') ?? false,
                 ],
             ],
             'flash' => [

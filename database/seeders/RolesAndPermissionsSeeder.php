@@ -39,6 +39,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'user.delete',
             'user.assign-role',
             'user.assign-permission',
+            'nadra-verification.view',
+            'nadra-verification.view-all',
+            'nadra-verification.create',
+            'nadra-verification.update',
+            'nadra-verification.delete',
+            'nadra-verification.call-api',
         ];
 
         $existingPermissions = Permission::query()

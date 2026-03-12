@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid, Users } from 'lucide-react';
+import { BookOpen, Fingerprint, FolderGit2, LayoutGrid, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -46,6 +46,14 @@ export function AppSidebar() {
             title: 'Users',
             href: '/users',
             icon: Users,
+        });
+    }
+
+    if (auth?.can?.viewNadraVerifications) {
+        mainNavItems.push({
+            title: 'NADRA Verifications',
+            href: '/nadra-verifications',
+            icon: Fingerprint,
         });
     }
 

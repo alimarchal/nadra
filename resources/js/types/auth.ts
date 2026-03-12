@@ -17,6 +17,12 @@ export type UserCapabilities = {
     deleteUsers: boolean;
     assignRoles: boolean;
     assignPermissions: boolean;
+    viewNadraVerifications: boolean;
+    viewAllNadraVerifications: boolean;
+    createNadraVerifications: boolean;
+    updateNadraVerifications: boolean;
+    deleteNadraVerifications: boolean;
+    callNadraApi: boolean;
 };
 
 export type Auth = {
