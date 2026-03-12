@@ -10,8 +10,20 @@ export type User = {
     [key: string]: unknown;
 };
 
+export type UserCapabilities = {
+    viewUsers: boolean;
+    createUsers: boolean;
+    updateUsers: boolean;
+    deleteUsers: boolean;
+    assignRoles: boolean;
+    assignPermissions: boolean;
+};
+
 export type Auth = {
     user: User;
+    roles: string[];
+    permissions: string[];
+    can: UserCapabilities;
 };
 
 export type TwoFactorSetupData = {

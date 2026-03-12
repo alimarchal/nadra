@@ -57,4 +57,34 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => now(),
         ]);
     }
+
+    /**
+     * Assign the super admin role after creating the user.
+     */
+    public function superAdmin(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->assignRole('super admin');
+        });
+    }
+
+    /**
+     * Assign the admin role after creating the user.
+     */
+    public function admin(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->assignRole('admin');
+        });
+    }
+
+    /**
+     * Assign the user role after creating the user.
+     */
+    public function standardUser(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->assignRole('user');
+        });
+    }
 }
