@@ -18,6 +18,8 @@ type EditableUser = {
     id: number;
     name: string;
     email: string;
+    client_branch_id: string | null;
+    client_machine_identifier: string | null;
     roles: string[];
     permissions: string[];
 };
@@ -43,6 +45,8 @@ export default function EditUser({ user, roles, permissions }: EditProps) {
         password_confirmation: '',
         roles: user.roles,
         permissions: user.permissions,
+        client_branch_id: user.client_branch_id ?? '',
+        client_machine_identifier: user.client_machine_identifier ?? '',
     });
     const formErrorBag = form.errors as Record<string, string | undefined>;
 
@@ -146,6 +150,29 @@ export default function EditUser({ user, roles, permissions }: EditProps) {
                                     }
                                 />
                                 <InputError message={form.errors.password_confirmation} />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="client_branch_id">Branch ID</Label>
+                                    <Input
+                                        id="client_branch_id"
+                                        value={form.data.client_branch_id}
+                                        onChange={(event) => form.setData('client_branch_id', event.target.value)}
+                                        placeholder="e.g. 123456"
+                                    />
+                                    <InputError message={form.errors.client_branch_id} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="client_machine_identifier">Machine Identifier</Label>
+                                    <Input
+                                        id="client_machine_identifier"
+                                        value={form.data.client_machine_identifier}
+                                        onChange={(event) => form.setData('client_machine_identifier', event.target.value)}
+                                        placeholder="e.g. ac-de-hf-qw-03"
+                                    />
+                                    <InputError message={form.errors.client_machine_identifier} />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

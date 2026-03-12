@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\NadraVerificationFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,8 @@ class NadraVerification extends Model
 {
     /** @use HasFactory<NadraVerificationFactory> */
     use HasFactory;
+
+    use HasUuids;
 
     protected $fillable = [
         'user_id',

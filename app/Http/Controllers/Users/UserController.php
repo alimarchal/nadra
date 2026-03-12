@@ -110,6 +110,8 @@ class UserController extends Controller implements HasMiddleware
                     'name' => $validated['name'],
                     'email' => $validated['email'],
                     'password' => $validated['password'],
+                    'client_branch_id' => $validated['client_branch_id'] ?? null,
+                    'client_machine_identifier' => $validated['client_machine_identifier'] ?? null,
                 ]);
 
                 $user->syncRoles($validated['roles']);
@@ -140,6 +142,8 @@ class UserController extends Controller implements HasMiddleware
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'client_branch_id' => $user->client_branch_id,
+                'client_machine_identifier' => $user->client_machine_identifier,
                 'roles' => $user->getRoleNames()->values()->all(),
                 'permissions' => $user->getDirectPermissions()->pluck('name')->values()->all(),
             ],
@@ -162,6 +166,8 @@ class UserController extends Controller implements HasMiddleware
                 $user->fill([
                     'name' => $validated['name'],
                     'email' => $validated['email'],
+                    'client_branch_id' => $validated['client_branch_id'] ?? null,
+                    'client_machine_identifier' => $validated['client_machine_identifier'] ?? null,
                 ]);
 
                 if (! empty($validated['password'])) {

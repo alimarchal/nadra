@@ -39,6 +39,8 @@ class UpdateUserRequest extends FormRequest
             'roles.*' => ['required', 'string', 'exists:roles,name'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['required', 'string', 'exists:permissions,name'],
+            'client_branch_id' => ['nullable', 'string', 'max:255'],
+            'client_machine_identifier' => ['nullable', 'string', 'max:255'],
         ];
     }
 

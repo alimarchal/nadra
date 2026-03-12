@@ -15,7 +15,7 @@ import { playAlertSound, playSuccessSound } from '@/lib/sounds';
 import type { BreadcrumbItem } from '@/types';
 
 type VerificationRow = {
-    id: number;
+    id: string;
     user_id: number;
     session_id: string | null;
     citizen_number: string;
@@ -128,7 +128,7 @@ export default function NadraVerificationsIndex({ verifications, filters, areaNa
     }, []);
 
     const deleteVerification = useCallback(
-        async (id: number) => {
+        async (id: string) => {
             playAlertSound();
             const confirmed = await deleteModal.confirm({
                 title: 'Delete Verification Record',
@@ -137,6 +137,7 @@ export default function NadraVerificationsIndex({ verifications, filters, areaNa
                 cancelText: 'Cancel',
                 variant: 'danger',
             });
+
             if (confirmed) {
                 router.delete(`/nadra-verifications/${id}`, { preserveScroll: true });
             }
@@ -274,7 +275,7 @@ export default function NadraVerificationsIndex({ verifications, filters, areaNa
                                 <tbody>
                                     {verifications.data.map((v) => (
                                         <tr key={v.id} className="border-b">
-                                            <td className="p-2">{v.id}</td>
+                                            <td className="p-2 font-mono text-xs" title={v.id}>{v.id.slice(0, 8)}</td>
                                             <td className="p-2 font-mono">{v.citizen_number}</td>
                                             <td className="p-2">{v.area_name}</td>
                                             <td className="p-2 font-mono text-xs">{v.session_id ?? '-'}</td>

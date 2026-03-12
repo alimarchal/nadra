@@ -24,6 +24,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'client_branch_id',
+        'client_machine_identifier',
     ];
 
     /**

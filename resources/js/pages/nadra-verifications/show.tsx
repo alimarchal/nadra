@@ -13,7 +13,7 @@ import type { BreadcrumbItem } from '@/types';
 type ResponseCode = { id: number; code: string; message: string };
 
 type Verification = {
-    id: number;
+    id: string;
     user_id: number;
     session_id: string | null;
     citizen_number: string;
@@ -83,6 +83,7 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
             cancelText: 'Cancel',
             variant: 'danger',
         });
+
         if (confirmed) {
             router.delete(`/nadra-verifications/${verification.id}`);
         }

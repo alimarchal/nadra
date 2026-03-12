@@ -1,6 +1,6 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -27,7 +27,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function CreateNadraVerification({ areaNames, fingerIndexes, templateTypes }: CreateProps) {
-    const { flash } = usePage().props;
+    const { flash, auth } = usePage().props;
 
     const form = useForm({
         citizen_number: '',
@@ -37,38 +37,99 @@ export default function CreateNadraVerification({ areaNames, fingerIndexes, temp
         finger_template: '',
         photograph: '',
         area_name: '',
-        client_branch_id: '',
-        client_machine_identifier: '',
+        client_branch_id: auth.user?.client_branch_id ?? '',
+        client_machine_identifier: auth.user?.client_machine_identifier ?? '',
         client_session_id: '',
         client_timestamp: new Date().toLocaleDateString('en-GB'),
         latitude: '',
         longitude: '',
         session_id: '',
     });
+    const { setData } = form;
     const formErrors = form.errors as Record<string, string | undefined>;
 
     const [fingerprintImage, setFingerprintImage] = useState<string | null>(null);
     const [photographImage, setPhotographImage] = useState<string | null>(null);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
     const scannerRef = useRef<HTMLIFrameElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const cameraStreamRef = useRef<MediaStream | null>(null);
 
     useEffect(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    form.setData('latitude', pos.coords.latitude.toFixed(6));
-                    form.setData('longitude', pos.coords.longitude.toFixed(6));
+                    setData('latitude', pos.coords.latitude.toFixed(6));
+                    setData('longitude', pos.coords.longitude.toFixed(6));
                 },
                 () => {},
             );
         }
+    }, [setData]);
+
+    const stopCamera = useCallback(() => {
+        if (cameraStreamRef.current) {
+            cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+            cameraStreamRef.current = null;
+        }
+
+        setIsCameraOpen(false);
     }, []);
+
+    useEffect(() => {
+        return () => stopCamera();
+    }, [stopCamera]);
+
+    useEffect(() => {
+        if (isCameraOpen && videoRef.current && cameraStreamRef.current) {
+            videoRef.current.srcObject = cameraStreamRef.current;
+        }
+    }, [isCameraOpen]);
+
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 640, facingMode: 'user' } });
+            cameraStreamRef.current = stream;
+            setIsCameraOpen(true);
+        } catch {
+            alert('Unable to access camera. Please check permissions.');
+        }
+    };
+
+    const captureFromCamera = () => {
+        if (!videoRef.current || !canvasRef.current) {
+return;
+}
+
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = 480;
+        canvas.height = 640;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+return;
+}
+
+        ctx.drawImage(video, 0, 0, 480, 640);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        const base64 = dataUrl.split(',')[1];
+        form.setData('photograph', base64);
+        setPhotographImage(dataUrl);
+        stopCamera();
+    };
 
     const handlePhotographUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+
+        if (!file) {
+return;
+}
 
         if (file.size > 30 * 1024) {
             alert('Photograph must be less than 30KB');
+
             return;
         }
 
@@ -84,6 +145,7 @@ export default function CreateNadraVerification({ areaNames, fingerIndexes, temp
     const captureFromScanner = () => {
         try {
             const imageSrc = localStorage.getItem('imageSrc');
+
             if (imageSrc) {
                 const base64 = imageSrc.split(',')[1] || imageSrc;
                 form.setData('finger_template', base64);
@@ -210,11 +272,33 @@ export default function CreateNadraVerification({ areaNames, fingerIndexes, temp
                     <Card>
                         <CardHeader>
                             <CardTitle>Photograph</CardTitle>
-                            <CardDescription>Upload citizen photograph (JPEG, max 30KB, 480x640 recommended)</CardDescription>
+                            <CardDescription>Capture from camera or upload citizen photograph (JPEG, max 30KB, 480x640 recommended)</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            {/* Live Camera */}
                             <div>
-                                <Label htmlFor="photo_file">Upload Photo</Label>
+                                <Label>Live Camera</Label>
+                                <div className="mt-1 flex items-center gap-2">
+                                    {!isCameraOpen ? (
+                                        <Button type="button" variant="outline" onClick={startCamera}>Open Camera</Button>
+                                    ) : (
+                                        <>
+                                            <Button type="button" onClick={captureFromCamera}>Capture Photo</Button>
+                                            <Button type="button" variant="outline" onClick={stopCamera}>Close Camera</Button>
+                                        </>
+                                    )}
+                                </div>
+                                {isCameraOpen && (
+                                    <div className="mt-2">
+                                        <video ref={videoRef} autoPlay playsInline muted className="h-64 w-auto rounded border bg-black" />
+                                    </div>
+                                )}
+                                <canvas ref={canvasRef} className="hidden" />
+                            </div>
+
+                            {/* File Upload */}
+                            <div>
+                                <Label htmlFor="photo_file">Or Upload Photo</Label>
                                 <Input id="photo_file" type="file" accept="image/jpeg,image/jpg" onChange={handlePhotographUpload} />
                                 <p className="text-xs text-muted-foreground mt-1">Max 30KB, JPEG format, 480×640 pixels recommended</p>
                             </div>

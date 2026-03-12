@@ -37,7 +37,7 @@ return new class extends Migration
         });
 
         Schema::create('nadra_verifications', function (Blueprint $table): void {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('session_id', 19)->nullable();
             $table->string('citizen_number', 13);
