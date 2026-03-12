@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Filter, X } from 'lucide-react';
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FormEvent} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmModal, useConfirmModal } from '@/components/confirm-modal';
 import Heading from '@/components/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -102,12 +103,14 @@ export default function UsersIndex({ users, filters, roles, permissions }: Index
             if (roleRef.current && !roleRef.current.contains(event.target as Node)) {
                 setRoleDropdownOpen(false);
             }
+
             if (permissionRef.current && !permissionRef.current.contains(event.target as Node)) {
                 setPermissionDropdownOpen(false);
             }
         };
 
         document.addEventListener('mousedown', handleClickOutside);
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
@@ -181,6 +184,7 @@ export default function UsersIndex({ users, filters, roles, permissions }: Index
         playAlertSound();
 
         const confirmed = await deleteModal.confirm();
+
         if (confirmed) {
             router.delete(`/users/${userId}`, {
                 preserveScroll: true,
