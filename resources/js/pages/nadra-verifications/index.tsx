@@ -166,13 +166,13 @@ export default function NadraVerificationsIndex({ verifications, filters, areaNa
                 </div>
 
                 {flash?.success && (
-                    <Alert>
+                    <Alert className="border-green-500/30 bg-green-500/5">
                         <AlertTitle>Success</AlertTitle>
                         <AlertDescription>{flash.success}</AlertDescription>
                     </Alert>
                 )}
                 {flash?.error && (
-                    <Alert variant="destructive">
+                    <Alert variant="destructive" className="border-destructive/30 bg-destructive/10">
                         <AlertTitle>Error</AlertTitle>
                         <AlertDescription>{flash.error}</AlertDescription>
                     </Alert>

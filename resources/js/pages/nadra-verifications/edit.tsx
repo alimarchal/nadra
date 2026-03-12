@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
+import { playSuccessSound } from '@/lib/sounds';
 import type { BreadcrumbItem } from '@/types';
 
 type AreaName = { id: number; name: string; label: string };
@@ -42,6 +43,12 @@ type EditProps = {
 
 export default function EditNadraVerification({ verification, areaNames, fingerIndexes, templateTypes }: EditProps) {
     const { flash } = usePage().props;
+
+    useEffect(() => {
+        if (flash?.success) {
+            playSuccessSound();
+        }
+    }, [flash?.success]);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'NADRA Verifications', href: '/nadra-verifications' },
@@ -179,8 +186,15 @@ return;
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <Heading title={`Edit Verification #${verification.id}`} description="Update the verification record" />
 
+                {flash?.success && (
+                    <Alert className="border-green-500/30 bg-green-500/5">
+                        <AlertTitle>Success</AlertTitle>
+                        <AlertDescription>{flash.success}</AlertDescription>
+                    </Alert>
+                )}
+
                 {flash?.error && (
-                    <Alert variant="destructive">
+                    <Alert variant="destructive" className="border-destructive/30 bg-destructive/10">
                         <AlertTitle>Error</AlertTitle>
                         <AlertDescription>{flash.error}</AlertDescription>
                     </Alert>
