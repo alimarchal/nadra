@@ -19,6 +19,7 @@ use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\LaravelPdf\Facades\Pdf;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 use Throwable;
@@ -143,7 +144,32 @@ class NadraVerificationController extends Controller implements HasMiddleware
         return Inertia::render('nadra-verifications/show', [
             'verification' => $nadraVerification,
             'responseCodes' => NadraResponseCode::query()->orderBy('code')->get(),
+            'reportFooterText' => config('nadra.report_footer_text'),
         ]);
+    }
+
+    public function downloadPdf(NadraVerification $nadraVerification)
+    {
+        $this->authorize('view', $nadraVerification);
+
+        $nadraVerification->load('user:id,name,email');
+
+        $responseCodeMessage = NadraResponseCode::query()
+            ->where('code', $nadraVerification->response_code)
+            ->value('message');
+
+        $statusLabel = $nadraVerification->is_successful
+            ? 'VERIFIED'
+            : ($nadraVerification->response_code ? 'FAILED' : 'PENDING');
+
+        return Pdf::view('pdf.nadra-verification-report', [
+            'verification' => $nadraVerification,
+            'responseCodeMessage' => $responseCodeMessage,
+            'statusLabel' => $statusLabel,
+            'reportFooterText' => config('nadra.report_footer_text'),
+        ])
+            ->name($nadraVerification->citizen_number.'.pdf')
+            ->download();
     }
 
     public function edit(NadraVerification $nadraVerification): Response

@@ -9,4 +9,5 @@ return [
     'client_secret' => env('NADRA_CLIENT_SECRET', ''),
     'franchisee_id' => env('NADRA_FRANCHISEE_ID', ''),
     'scope' => env('NADRA_SCOPE', 'NADRAAPI'),
+    'report_footer_text' => env('NADRA_REPORT_FOOTER_TEXT', 'Developed By Ali Raza Marchal (IT Division - The Bank of Azad Jammu and Kashmir)'),
 ];

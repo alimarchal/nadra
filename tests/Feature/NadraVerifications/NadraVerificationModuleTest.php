@@ -181,6 +181,21 @@ test('admin can view a verification record', function (): void {
         );
 });
 
+test('admin can download verification pdf report', function (): void {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $record = NadraVerification::factory()->create([
+        'citizen_number' => '6110119876547',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('nadra-verifications.download-pdf', $record))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf')
+        ->assertHeader('content-disposition', 'attachment; filename=6110119876547.pdf');
+});
+
 test('operator cannot view another users verification record', function (): void {
     $operator = User::factory()->create();
     $operator->assignRole('operator');

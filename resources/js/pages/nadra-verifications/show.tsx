@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Printer } from 'lucide-react';
+import { Download, Pencil, Printer, RefreshCw, Send, Trash2 } from 'lucide-react';
 import { useEffect } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { ConfirmModal, useConfirmModal } from '@/components/confirm-modal';
@@ -49,9 +49,10 @@ type Verification = {
 type ShowProps = {
     verification: Verification;
     responseCodes: ResponseCode[];
+    reportFooterText: string;
 };
 
-export default function ShowNadraVerification({ verification, responseCodes }: ShowProps) {
+export default function ShowNadraVerification({ verification, responseCodes, reportFooterText }: ShowProps) {
     const { auth, flash } = usePage().props;
     const deleteModal = useConfirmModal();
 
@@ -103,6 +104,10 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleDownloadReport = () => {
+        window.open(`/nadra-verifications/${verification.id}/download-pdf`, '_blank', 'noopener,noreferrer');
     };
 
     const jsonOrDash = (value: unknown) => {
@@ -330,31 +335,60 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                         <Button
                             size="sm"
                             onClick={handlePrint}
-                            className="gap-2 border border-black bg-black text-white shadow-sm transition hover:bg-black/90"
+                            className="h-9 w-9 border border-black bg-black p-0 text-white shadow-sm transition hover:bg-black/90"
+                            aria-label="Print report"
+                            title="Print report"
                         >
                             <Printer className="h-4 w-4" />
-                            Print Report
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleDownloadReport}
+                            className="h-9 w-9 border border-black p-0"
+                            aria-label="Download PDF"
+                            title="Download PDF"
+                        >
+                            <Download className="h-4 w-4" />
                         </Button>
                         {auth?.can?.callNadraApi && (
                             <>
-                                <Button size="sm" onClick={handleCallApi}>
+                                <Button size="sm" onClick={handleCallApi} className="gap-2">
+                                    <Send className="h-4 w-4" />
                                     Call NADRA API
                                 </Button>
                                 {verification.session_id && (
-                                    <Button variant="outline" size="sm" onClick={handleGetLastResult}>
+                                    <Button variant="outline" size="sm" onClick={handleGetLastResult} className="gap-2">
+                                        <RefreshCw className="h-4 w-4" />
                                         Get Last Result
                                     </Button>
                                 )}
                             </>
                         )}
-                        {auth?.can?.updateNadraVerifications && (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={`/nadra-verifications/${verification.id}/edit`}>Edit</Link>
+                        {Boolean(auth?.can?.updateNadraVerifications) && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                asChild
+                                className="h-9 w-9 border border-black p-0"
+                                aria-label="Edit verification"
+                                title="Edit verification"
+                            >
+                                <Link href={`/nadra-verifications/${verification.id}/edit`}>
+                                    <Pencil className="h-4 w-4" />
+                                </Link>
                             </Button>
                         )}
-                        {auth?.can?.deleteNadraVerifications && (
-                            <Button variant="destructive" size="sm" onClick={handleDelete}>
-                                Delete
+                        {Boolean(auth?.can?.deleteNadraVerifications) && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleDelete}
+                                className="h-9 w-9 p-0"
+                                aria-label="Delete verification"
+                                title="Delete verification"
+                            >
+                                <Trash2 className="h-4 w-4" />
                             </Button>
                         )}
                     </div>
@@ -804,7 +838,7 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                 </div>
 
                 <div className="print-footer" aria-hidden="true">
-                    <span>Developed By Ali Raza Marchal (IT Division - The Bank of Azad Jammu and Kashmir)</span>
+                    <span>{reportFooterText}</span>
                     <span>Page 1 of 1</span>
                 </div>
             </div>
