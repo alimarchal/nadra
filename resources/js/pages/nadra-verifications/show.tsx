@@ -1,5 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { Printer } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import AppLogoIcon from '@/components/app-logo-icon';
 import { ConfirmModal, useConfirmModal } from '@/components/confirm-modal';
 import Heading from '@/components/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -52,6 +54,7 @@ type ShowProps = {
 export default function ShowNadraVerification({ verification, responseCodes }: ShowProps) {
     const { auth, flash } = usePage().props;
     const deleteModal = useConfirmModal();
+    const [printOrientation, setPrintOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'NADRA Verifications', href: '/nadra-verifications' },
@@ -65,6 +68,22 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
     }, [flash?.success]);
 
     const responseCodeInfo = responseCodes.find((rc) => rc.code === verification.response_code);
+    const statusLabel = verification.is_successful ? 'VERIFIED' : verification.response_code ? 'FAILED' : 'PENDING';
+    const requestReferenceData = verification.raw_request ?? {
+        sessionId: verification.session_id,
+        transactionId: verification.transaction_id,
+        citizenNumber: verification.citizen_number,
+        citizenContactNumber: verification.citizen_contact_number,
+        fingerIndex: verification.finger_index,
+        templateType: verification.template_type,
+        areaName: verification.area_name,
+        clientBranchId: verification.client_branch_id,
+        clientMachineIdentifier: verification.client_machine_identifier,
+        clientSessionId: verification.client_session_id,
+        clientTimeStamp: verification.client_timestamp,
+        latitude: verification.latitude,
+        longitude: verification.longitude,
+    };
 
     const handleCallApi = () => {
         router.post(`/nadra-verifications/${verification.id}/call-api`, {}, { preserveScroll: true });
@@ -76,26 +95,249 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
 
     const handleDelete = async () => {
         playAlertSound();
-        const confirmed = await deleteModal.confirm({
-            title: 'Delete Verification Record',
-            description: 'Are you sure you want to delete this verification record? This action cannot be undone.',
-            confirmText: 'Delete',
-            cancelText: 'Cancel',
-            variant: 'danger',
-        });
+        const confirmed = await deleteModal.confirm();
 
         if (confirmed) {
             router.delete(`/nadra-verifications/${verification.id}`);
         }
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const jsonOrDash = (value: unknown) => {
+        if (value === null || value === undefined) {
+            return '-';
+        }
+
+        if (typeof value === 'object') {
+            return JSON.stringify(value, null, 2);
+        }
+
+        return String(value);
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Verification #${verification.id}`} />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+            <style>{`
+                @media screen {
+                    .print-only {
+                        display: none;
+                    }
+
+                    .print-footer {
+                        display: none;
+                    }
+                }
+
+                @media print {
+                    @page {
+                        size: A4 ${printOrientation};
+                        margin: 4mm 8mm 8mm;
+                    }
+
+                    header,
+                    aside,
+                    nav,
+                    [role='navigation'],
+                    [data-slot='sidebar'],
+                    [data-slot='sidebar-inset'] > header {
+                        display: none !important;
+                    }
+
+                    .no-print {
+                        display: none !important;
+                    }
+
+                    .screen-only {
+                        display: none !important;
+                    }
+
+                    .print-only {
+                        display: block !important;
+                    }
+
+                    .print-page {
+                        color: #000;
+                        font-family: Arial, Helvetica, sans-serif;
+                        margin: 0 !important;
+                        padding: 0 0 18mm !important;
+                        gap: 2px !important;
+                    }
+
+                    .print-page,
+                    .print-page * {
+                        color: #000 !important;
+                    }
+
+                    .print-header {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 10px;
+                        border: 0;
+                        padding: 2px 4px;
+                        margin: 0 0 2px;
+                    }
+
+                    .print-title {
+                        margin: 0;
+                        font-size: 20px;
+                        font-weight: 700;
+                        letter-spacing: 0.5px;
+                    }
+
+                    .print-subtitle {
+                        margin: 1px 0 0;
+                        font-size: 11px;
+                    }
+
+                    .print-section-title {
+                        margin-top: 3px;
+                        border: 1px solid #000;
+                        border-bottom: 0;
+                        background: #000;
+                        color: #fff;
+                        padding: 2px 5px;
+                        font-size: 12px;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                    }
+
+                    .print-table {
+                        width: 100%;
+                        border: 1px solid #000;
+                        border-collapse: collapse;
+                    }
+
+                    .print-table th,
+                    .print-table td {
+                        border: 1px solid #000;
+                        padding: 3px 5px;
+                        font-size: 10px;
+                        vertical-align: top;
+                        text-align: left;
+                    }
+
+                    .print-table th {
+                        width: 24%;
+                        background: #000;
+                        color: #fff;
+                        font-weight: 700;
+                    }
+
+                    .print-pre {
+                        margin: 0;
+                        border: 1px solid #000;
+                        border-top: 0;
+                        padding: 4px;
+                        font-size: 9px;
+                        line-height: 1.2;
+                        white-space: pre-wrap;
+                        word-break: break-word;
+                    }
+
+                    .print-media-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 0;
+                        border: 1px solid #000;
+                        border-top: 0;
+                        border-bottom: 1px solid #000;
+                        padding: 0;
+                    }
+
+                    .print-media-box {
+                        border: 0;
+                        padding: 2px;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    .print-media-box + .print-media-box {
+                        border-left: 1px solid #000;
+                    }
+
+                    .print-media-title {
+                        margin: 0 0 3px;
+                        font-size: 10px;
+                        font-weight: 700;
+                        text-align: center;
+                    }
+
+                    .print-media-frame {
+                        width: 170px;
+                        height: 130px;
+                        margin: 0 auto;
+                        border: 1px solid #000;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        overflow: hidden;
+                    }
+
+                    .print-media-img {
+                        width: 100%;
+                        height: 100%;
+                        object-fit: contain;
+                        display: block;
+                    }
+
+                    .print-media-empty {
+                        width: 100%;
+                        height: 100%;
+                        border: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0 2px;
+                        text-align: center;
+                        font-size: 10px;
+                    }
+
+                    .print-footer {
+                        position: fixed;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 2mm 8mm;
+                        border-top: 1px solid #000;
+                        background: #fff;
+                        font-size: 9px;
+                        line-height: 1.2;
+                    }
+
+                    .print-page-number::after {
+                        content: "Page " counter(page) " of " counter(pages);
+                    }
+                }
+            `}</style>
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 print-page">
                 <div className="flex items-center justify-between">
                     <Heading title={`Verification #${verification.id}`} description={`CNIC: ${verification.citizen_number}`} />
-                    <div className="flex gap-2">
+                    <div className="no-print flex gap-2">
+                        <select
+                            value={printOrientation}
+                            onChange={(event) => setPrintOrientation(event.target.value as 'portrait' | 'landscape')}
+                            className="border-input bg-background h-9 rounded-md border px-3 py-1 text-sm"
+                            aria-label="Print orientation"
+                        >
+                            <option value="portrait">Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                        <Button
+                            size="sm"
+                            onClick={handlePrint}
+                            className="gap-2 border border-black bg-black text-white shadow-sm transition hover:bg-black/90"
+                        >
+                            <Printer className="h-4 w-4" />
+                            Print Report
+                        </Button>
                         {auth?.can?.callNadraApi && (
                             <>
                                 <Button size="sm" onClick={handleCallApi}>
@@ -134,8 +376,8 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                     </Alert>
                 )}
 
-                {/* Verification Status */}
-                <Card>
+                <div className="screen-only space-y-4">
+                    <Card>
                     <CardHeader>
                         <CardTitle>Verification Status</CardTitle>
                     </CardHeader>
@@ -194,10 +436,9 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                             </div>
                         </div>
                     </CardContent>
-                </Card>
+                    </Card>
 
-                {/* Citizen Details */}
-                <Card>
+                    <Card>
                     <CardHeader>
                         <CardTitle>Citizen Information</CardTitle>
                     </CardHeader>
@@ -217,10 +458,9 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                             </div>
                         </div>
                     </CardContent>
-                </Card>
+                    </Card>
 
-                {/* Biometric Details */}
-                <Card>
+                    <Card>
                     <CardHeader>
                         <CardTitle>Biometric Details</CardTitle>
                     </CardHeader>
@@ -264,10 +504,9 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                             </div>
                         )}
                     </CardContent>
-                </Card>
+                    </Card>
 
-                {/* Session & Transaction Details */}
-                <Card>
+                    <Card>
                     <CardHeader>
                         <CardTitle>Session & Transaction</CardTitle>
                     </CardHeader>
@@ -287,10 +526,32 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                             </div>
                         </div>
                     </CardContent>
-                </Card>
+                    </Card>
 
-                {/* Client Information */}
-                <Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Created By User</CardTitle>
+                            <CardDescription>User who created this verification record in bank system.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">User ID</p>
+                                    <p className="font-mono text-sm">{verification.user?.id ?? verification.user_id}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Name</p>
+                                    <p>{verification.user?.name ?? '-'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Email</p>
+                                    <p>{verification.user?.email ?? '-'}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
                     <CardHeader>
                         <CardTitle>Client Information</CardTitle>
                     </CardHeader>
@@ -322,55 +583,236 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                             </div>
                         </div>
                     </CardContent>
-                </Card>
+                    </Card>
 
-                {/* Citizen Data (if available) */}
-                {verification.citizen_data && Object.keys(verification.citizen_data).length > 0 && (
+                    {verification.citizen_data && Object.keys(verification.citizen_data).length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Citizen Data (from NADRA)</CardTitle>
+                                <CardDescription>Data returned by NADRA upon successful verification</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <pre className="bg-muted rounded p-4 text-sm overflow-auto max-h-96">
+                                    {JSON.stringify(verification.citizen_data, null, 2)}
+                                </pre>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <Card>
                         <CardHeader>
-                            <CardTitle>Citizen Data (from NADRA)</CardTitle>
-                            <CardDescription>Data returned by NADRA upon successful verification</CardDescription>
+                            <CardTitle>User Submitted Input (Reference)</CardTitle>
+                            <CardDescription>Exact request payload captured from user side for bank system reference.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <pre className="bg-muted rounded p-4 text-sm overflow-auto max-h-96">
-                                {JSON.stringify(verification.citizen_data, null, 2)}
+                            <pre className="bg-muted rounded p-4 text-xs overflow-auto max-h-80 font-mono">
+                                {JSON.stringify(requestReferenceData, null, 2)}
                             </pre>
                         </CardContent>
                     </Card>
-                )}
 
-                {/* Raw Response (for debugging) */}
-                {verification.raw_response && (
+                    {verification.raw_response && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Raw API Response</CardTitle>
+                                <CardDescription>Complete response from NADRA API</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <pre className="bg-muted rounded p-4 text-xs overflow-auto max-h-64 font-mono">
+                                    {JSON.stringify(verification.raw_response, null, 2)}
+                                </pre>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Raw API Response</CardTitle>
-                            <CardDescription>Complete response from NADRA API</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <pre className="bg-muted rounded p-4 text-xs overflow-auto max-h-64 font-mono">
-                                {JSON.stringify(verification.raw_response, null, 2)}
-                            </pre>
+                        <CardContent className="pt-6">
+                            <div className="flex gap-8 text-sm text-muted-foreground">
+                                <p>Created: {new Date(verification.created_at).toLocaleString()}</p>
+                                <p>Updated: {new Date(verification.updated_at).toLocaleString()}</p>
+                            </div>
                         </CardContent>
                     </Card>
-                )}
+                </div>
 
-                {/* Timestamps */}
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex gap-8 text-sm text-muted-foreground">
-                            <p>Created: {new Date(verification.created_at).toLocaleString()}</p>
-                            <p>Updated: {new Date(verification.updated_at).toLocaleString()}</p>
+                <div className="print-only">
+                    <div className="print-header">
+                        <div>
+                            <h1 className="print-title">NADRA VERIFICATION REPORT</h1>
+                            <p className="print-subtitle">Bank of Azad Jammu & Kashmir</p>
+                            <p className="print-subtitle">Generated: {new Date().toLocaleString()}</p>
                         </div>
-                    </CardContent>
-                </Card>
+                        <AppLogoIcon className="h-20 w-auto object-contain" alt="BAJK Logo" />
+                    </div>
 
-                <div className="flex gap-2">
+                    <table className="print-table">
+                        <tbody>
+                            <tr>
+                                <th>Verification ID</th>
+                                <td>{verification.id}</td>
+                                <th>Status</th>
+                                <td>{statusLabel}</td>
+                            </tr>
+                            <tr>
+                                <th>Response Code</th>
+                                <td>{verification.response_code ?? '-'}</td>
+                                <th>Response Message</th>
+                                <td>{responseCodeInfo?.message ?? verification.response_message ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>Facial Result</th>
+                                <td>{verification.facial_result ?? '-'}</td>
+                                <th>Fingerprint Result</th>
+                                <td>{verification.fingerprint_result ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>Created At</th>
+                                <td>{new Date(verification.created_at).toLocaleString()}</td>
+                                <th>Updated At</th>
+                                <td>{new Date(verification.updated_at).toLocaleString()}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h2 className="print-section-title">Citizen Information</h2>
+                    <table className="print-table">
+                        <tbody>
+                            <tr>
+                                <th>CNIC Number</th>
+                                <td>{verification.citizen_number}</td>
+                                <th>Contact Number</th>
+                                <td>{verification.citizen_contact_number ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>Area Name</th>
+                                <td>{verification.area_name}</td>
+                                <th>Submitted By</th>
+                                <td>{verification.user?.name ?? '-'} ({verification.user?.email ?? '-'})</td>
+                            </tr>
+                            <tr>
+                                <th>Created By User ID</th>
+                                <td>{verification.user?.id ?? verification.user_id}</td>
+                                <th>Created By Email</th>
+                                <td>{verification.user?.email ?? '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h2 className="print-section-title">Biometric Information</h2>
+                    <table className="print-table">
+                        <tbody>
+                            <tr>
+                                <th>Finger Index</th>
+                                <td>{verification.finger_index ?? '-'}</td>
+                                <th>Template Type</th>
+                                <td>{verification.template_type ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>Has Fingerprint</th>
+                                <td>{verification.finger_template ? 'Yes' : 'No'}</td>
+                                <th>Has Photograph</th>
+                                <td>{verification.photograph ? 'Yes' : 'No'}</td>
+                            </tr>
+                            <tr>
+                                <th>Available Fingers</th>
+                                <td colSpan={3}>{verification.available_fingers?.join(', ') ?? '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h2 className="print-section-title">Biometric Images</h2>
+                    <div className="print-media-grid">
+                        <div className="print-media-box">
+                            <p className="print-media-title">Citizen Photograph</p>
+                            <div className="print-media-frame">
+                                {verification.photograph ? (
+                                    <img
+                                        src={`data:image/jpeg;base64,${verification.photograph}`}
+                                        alt="Citizen Photograph"
+                                        className="print-media-img"
+                                    />
+                                ) : (
+                                    <div className="print-media-empty">Photograph not available</div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="print-media-box">
+                            <p className="print-media-title">Fingerprint Image</p>
+                            <div className="print-media-frame">
+                                {verification.finger_template ? (
+                                    <img
+                                        src={`data:image/png;base64,${verification.finger_template}`}
+                                        alt="Fingerprint"
+                                        className="print-media-img"
+                                    />
+                                ) : (
+                                    <div className="print-media-empty">Fingerprint not available</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 className="print-section-title">Session and Client Information</h2>
+                    <table className="print-table">
+                        <tbody>
+                            <tr>
+                                <th>Session ID</th>
+                                <td>{verification.session_id ?? '-'}</td>
+                                <th>Transaction ID</th>
+                                <td>{verification.transaction_id}</td>
+                            </tr>
+                            <tr>
+                                <th>Client Branch ID</th>
+                                <td>{verification.client_branch_id}</td>
+                                <th>Machine Identifier</th>
+                                <td>{verification.client_machine_identifier}</td>
+                            </tr>
+                            <tr>
+                                <th>Client Session ID</th>
+                                <td>{verification.client_session_id}</td>
+                                <th>Client Timestamp</th>
+                                <td>{verification.client_timestamp}</td>
+                            </tr>
+                            <tr>
+                                <th>Latitude</th>
+                                <td>{verification.latitude}</td>
+                                <th>Longitude</th>
+                                <td>{verification.longitude}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h2 className="print-section-title">Citizen Data</h2>
+                    <pre className="print-pre">{jsonOrDash(verification.citizen_data)}</pre>
+
+                    <h2 className="print-section-title">Raw Request</h2>
+                    <pre className="print-pre">{jsonOrDash(verification.raw_request)}</pre>
+
+                    <h2 className="print-section-title">Raw Response</h2>
+                    <pre className="print-pre">{jsonOrDash(verification.raw_response)}</pre>
+                </div>
+
+                <div className="no-print flex gap-2">
                     <Button variant="outline" asChild>
                         <Link href="/nadra-verifications">Back to List</Link>
                     </Button>
                 </div>
+
+                <div className="print-footer" aria-hidden="true">
+                    <span>Developed By Ali Raza Marchal (IT Division - The Bank of Azad Jammu and Kashmir)</span>
+                    <span className="print-page-number" />
+                </div>
             </div>
-            <ConfirmModal isOpen={deleteModal.isOpen} options={deleteModal.options} onConfirm={deleteModal.handleConfirm} onCancel={deleteModal.handleCancel} />
+            <ConfirmModal
+                open={deleteModal.open}
+                onConfirm={deleteModal.onConfirm}
+                onCancel={deleteModal.onCancel}
+                title="Delete verification"
+                description="Are you sure you want to delete this verification record? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </AppLayout>
     );
 }

@@ -67,6 +67,7 @@ const breadcrumbs: BreadcrumbItem[] = [{ title: 'NADRA Verifications', href: '/n
 export default function NadraVerificationsIndex({ verifications, filters, areaNames, responseCodes }: IndexProps) {
     const { auth, flash } = usePage().props;
     const deleteModal = useConfirmModal();
+    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
     const [showFilters, setShowFilters] = useState(false);
     const [localFilters, setLocalFilters] = useState<Filters>({
@@ -129,18 +130,15 @@ export default function NadraVerificationsIndex({ verifications, filters, areaNa
 
     const deleteVerification = useCallback(
         async (id: string) => {
+            setDeleteTargetId(id);
             playAlertSound();
-            const confirmed = await deleteModal.confirm({
-                title: 'Delete Verification Record',
-                description: 'Are you sure you want to delete this verification record? This action cannot be undone.',
-                confirmText: 'Delete',
-                cancelText: 'Cancel',
-                variant: 'danger',
-            });
+            const confirmed = await deleteModal.confirm();
 
             if (confirmed) {
                 router.delete(`/nadra-verifications/${id}`, { preserveScroll: true });
             }
+
+            setDeleteTargetId(null);
         },
         [deleteModal],
     );
@@ -353,7 +351,20 @@ export default function NadraVerificationsIndex({ verifications, filters, areaNa
                     </CardContent>
                 </Card>
             </div>
-            <ConfirmModal isOpen={deleteModal.isOpen} options={deleteModal.options} onConfirm={deleteModal.handleConfirm} onCancel={deleteModal.handleCancel} />
+            <ConfirmModal
+                open={deleteModal.open}
+                onConfirm={deleteModal.onConfirm}
+                onCancel={deleteModal.onCancel}
+                title="Delete verification"
+                description={
+                    deleteTargetId
+                        ? `Are you sure you want to delete verification #${deleteTargetId.slice(0, 8)}? This action cannot be undone.`
+                        : 'Are you sure you want to delete this verification record? This action cannot be undone.'
+                }
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </AppLayout>
     );
 }
