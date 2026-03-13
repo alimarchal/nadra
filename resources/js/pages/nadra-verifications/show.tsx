@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Printer } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { ConfirmModal, useConfirmModal } from '@/components/confirm-modal';
 import Heading from '@/components/heading';
@@ -54,7 +54,6 @@ type ShowProps = {
 export default function ShowNadraVerification({ verification, responseCodes }: ShowProps) {
     const { auth, flash } = usePage().props;
     const deleteModal = useConfirmModal();
-    const [printOrientation, setPrintOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'NADRA Verifications', href: '/nadra-verifications' },
@@ -134,7 +133,6 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
 
                 @media print {
                     @page {
-                        size: A4 ${printOrientation};
                         margin: 4mm 8mm 8mm;
                     }
 
@@ -228,6 +226,17 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                         font-weight: 700;
                     }
 
+                    .print-media-table th {
+                        width: 50%;
+                        text-align: center;
+                    }
+
+                    .print-media-table td {
+                        text-align: center;
+                        vertical-align: middle;
+                        padding: 4px;
+                    }
+
                     .print-pre {
                         margin: 0;
                         border: 1px solid #000;
@@ -312,24 +321,12 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                         line-height: 1.2;
                     }
 
-                    .print-page-number::after {
-                        content: "Page " counter(page) " of " counter(pages);
-                    }
                 }
             `}</style>
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 print-page">
                 <div className="flex items-center justify-between">
                     <Heading title={`Verification #${verification.id}`} description={`CNIC: ${verification.citizen_number}`} />
                     <div className="no-print flex gap-2">
-                        <select
-                            value={printOrientation}
-                            onChange={(event) => setPrintOrientation(event.target.value as 'portrait' | 'landscape')}
-                            className="border-input bg-background h-9 rounded-md border px-3 py-1 text-sm"
-                            aria-label="Print orientation"
-                        >
-                            <option value="portrait">Portrait</option>
-                            <option value="landscape">Landscape</option>
-                        </select>
                         <Button
                             size="sm"
                             onClick={handlePrint}
@@ -720,37 +717,45 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
                         </tbody>
                     </table>
 
-                    <h2 className="print-section-title">Biometric Images</h2>
-                    <div className="print-media-grid">
-                        <div className="print-media-box">
-                            <p className="print-media-title">Citizen Photograph</p>
-                            <div className="print-media-frame">
-                                {verification.photograph ? (
-                                    <img
-                                        src={`data:image/jpeg;base64,${verification.photograph}`}
-                                        alt="Citizen Photograph"
-                                        className="print-media-img"
-                                    />
-                                ) : (
-                                    <div className="print-media-empty">Photograph not available</div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="print-media-box">
-                            <p className="print-media-title">Fingerprint Image</p>
-                            <div className="print-media-frame">
-                                {verification.finger_template ? (
-                                    <img
-                                        src={`data:image/png;base64,${verification.finger_template}`}
-                                        alt="Fingerprint"
-                                        className="print-media-img"
-                                    />
-                                ) : (
-                                    <div className="print-media-empty">Fingerprint not available</div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                    <h2 className="print-section-title">BIOMETRIC IMAGES</h2>
+                    <table className="print-table print-media-table">
+                        <thead>
+                            <tr>
+                                <th>Citizen Photograph</th>
+                                <th>Fingerprint Image</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div className="print-media-frame">
+                                        {verification.photograph ? (
+                                            <img
+                                                src={`data:image/jpeg;base64,${verification.photograph}`}
+                                                alt="Citizen Photograph"
+                                                className="print-media-img"
+                                            />
+                                        ) : (
+                                            <div className="print-media-empty">Photograph not available</div>
+                                        )}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div className="print-media-frame">
+                                        {verification.finger_template ? (
+                                            <img
+                                                src={`data:image/png;base64,${verification.finger_template}`}
+                                                alt="Fingerprint"
+                                                className="print-media-img"
+                                            />
+                                        ) : (
+                                            <div className="print-media-empty">Fingerprint not available</div>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
                     <h2 className="print-section-title">Session and Client Information</h2>
                     <table className="print-table">
@@ -800,7 +805,7 @@ export default function ShowNadraVerification({ verification, responseCodes }: S
 
                 <div className="print-footer" aria-hidden="true">
                     <span>Developed By Ali Raza Marchal (IT Division - The Bank of Azad Jammu and Kashmir)</span>
-                    <span className="print-page-number" />
+                    <span>Page 1 of 1</span>
                 </div>
             </div>
             <ConfirmModal
