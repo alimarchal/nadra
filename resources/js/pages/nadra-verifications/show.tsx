@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Download, Pencil, Printer, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { Pencil, Printer, RefreshCw, Send, Trash2 } from 'lucide-react';
 import { useEffect } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { ConfirmModal, useConfirmModal } from '@/components/confirm-modal';
@@ -104,10 +104,6 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
 
     const handlePrint = () => {
         window.print();
-    };
-
-    const handleDownloadReport = () => {
-        window.open(`/nadra-verifications/${verification.id}/download-pdf`, '_blank', 'noopener,noreferrer');
     };
 
     const jsonOrDash = (value: unknown) => {
@@ -341,24 +337,14 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                         >
                             <Printer className="h-4 w-4" />
                         </Button>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleDownloadReport}
-                            className="h-9 w-9 border border-black p-0"
-                            aria-label="Download PDF"
-                            title="Download PDF"
-                        >
-                            <Download className="h-4 w-4" />
-                        </Button>
                         {auth?.can?.callNadraApi && (
                             <>
-                                <Button size="sm" onClick={handleCallApi} className="gap-2">
+                                <Button size="sm" onClick={handleCallApi} className="h-9 gap-2">
                                     <Send className="h-4 w-4" />
                                     Call NADRA API
                                 </Button>
                                 {verification.session_id && (
-                                    <Button variant="outline" size="sm" onClick={handleGetLastResult} className="gap-2">
+                                    <Button variant="outline" size="sm" onClick={handleGetLastResult} className="h-9 gap-2">
                                         <RefreshCw className="h-4 w-4" />
                                         Get Last Result
                                     </Button>

@@ -20,8 +20,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('permission:nadra-verification.view|nadra-verification.create|nadra-verification.update|nadra-verification.delete')
         ->group(function (): void {
             Route::resource('nadra-verifications', NadraVerificationController::class);
-            Route::get('nadra-verifications/{nadra_verification}/download-pdf', [NadraVerificationController::class, 'downloadPdf'])
-                ->name('nadra-verifications.download-pdf');
             Route::post('nadra-verifications/{nadra_verification}/call-api', [NadraVerificationController::class, 'callApi'])
                 ->name('nadra-verifications.call-api')
                 ->middleware('permission:nadra-verification.call-api');
