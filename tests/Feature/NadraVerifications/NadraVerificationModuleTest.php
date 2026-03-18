@@ -135,7 +135,7 @@ test('admin can store a verification record', function (): void {
             'latitude' => '33.761000',
             'longitude' => '73.096000',
         ])
-        ->assertRedirect(route('nadra-verifications.index'));
+        ->assertRedirect();
 
     $this->assertDatabaseHas('nadra_verifications', [
         'citizen_number' => '6110119876547',

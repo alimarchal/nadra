@@ -11,6 +11,28 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
+declare global {
+    interface Window {
+        Fingerprint: {
+            WebApi: new () => FingerprintWebApi;
+            SampleFormat: { PngImage: number; Raw: number; Compressed: number; Intermediate: number };
+            QualityCode: Record<number, string>;
+            b64UrlTo64: (data: string) => string;
+        };
+    }
+}
+
+interface FingerprintWebApi {
+    onDeviceConnected: ((e: unknown) => void) | null;
+    onDeviceDisconnected: ((e: unknown) => void) | null;
+    onCommunicationFailed: ((e: unknown) => void) | null;
+    onSamplesAcquired: ((s: { samples: string }) => void) | null;
+    onQualityReported: ((e: { quality: number }) => void) | null;
+    enumerateDevices: () => Promise<string[]>;
+    startAcquisition: (format: number, reader: string) => Promise<void>;
+    stopAcquisition: () => Promise<void>;
+}
+
 type AreaName = { id: number; name: string; label: string };
 type FingerIndex = { id: number; name: string; label: string };
 type TemplateType = { id: number; name: string; label: string };
@@ -37,8 +59,8 @@ export default function CreateNadraVerification({ areaNames, fingerIndexes, temp
         finger_template: '',
         photograph: '',
         area_name: '',
-        client_branch_id: auth.user?.client_branch_id ?? '',
-        client_machine_identifier: auth.user?.client_machine_identifier ?? '',
+        client_branch_id: String(auth.user?.client_branch_id ?? ''),
+        client_machine_identifier: String(auth.user?.client_machine_identifier ?? ''),
         client_session_id: '',
         client_timestamp: new Date().toLocaleDateString('en-GB'),
         latitude: '',
@@ -51,10 +73,166 @@ export default function CreateNadraVerification({ areaNames, fingerIndexes, temp
     const [fingerprintImage, setFingerprintImage] = useState<string | null>(null);
     const [photographImage, setPhotographImage] = useState<string | null>(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
-    const scannerRef = useRef<HTMLIFrameElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const cameraStreamRef = useRef<MediaStream | null>(null);
+
+    // Fingerprint scanner state
+    const sdkRef = useRef<FingerprintWebApi | null>(null);
+    const [scannerReady, setScannerReady] = useState(false);
+    const [scannerStatus, setScannerStatus] = useState('Loading scanner...');
+    const [scannerReaders, setScannerReaders] = useState<string[]>([]);
+    const [selectedReader, setSelectedReader] = useState('');
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanQuality, setScanQuality] = useState('');
+    const [scannedPreview, setScannedPreview] = useState<string | null>(null);
+    const [scannedBase64, setScannedBase64] = useState<string | null>(null);
+    const [isCaptured, setIsCaptured] = useState(false);
+
+    // Load Digital Persona SDK scripts
+    useEffect(() => {
+        const scripts = [
+            '/fingerprint-scanner/scripts/es6-shim.js',
+            '/fingerprint-scanner/scripts/websdk.client.bundle.min.js',
+            '/fingerprint-scanner/scripts/fingerprint.sdk.min.js',
+        ];
+
+        let loaded = 0;
+        const loadNext = () => {
+            if (loaded >= scripts.length) {
+                initScanner();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = scripts[loaded];
+            script.onload = () => {
+                loaded++;
+                loadNext();
+            };
+            script.onerror = () => {
+                setScannerStatus('Failed to load scanner SDK');
+            };
+            document.body.appendChild(script);
+        };
+
+        loadNext();
+    }, []);
+
+    const initScanner = useCallback(() => {
+        if (!window.Fingerprint) {
+            setScannerStatus('Scanner SDK not available');
+            return;
+        }
+
+        const sdk = new window.Fingerprint.WebApi();
+        sdkRef.current = sdk;
+
+        sdk.onDeviceConnected = () => setScannerStatus('Scanner connected - ready to scan');
+        sdk.onDeviceDisconnected = () => setScannerStatus('Scanner disconnected');
+        sdk.onCommunicationFailed = () => setScannerStatus('Communication failed - ensure the scanner service is running');
+        sdk.onQualityReported = (e) => setScanQuality(window.Fingerprint.QualityCode[e.quality] || '');
+
+        sdk.onSamplesAcquired = (s) => {
+            const samples = JSON.parse(s.samples);
+            const base64Image = window.Fingerprint.b64UrlTo64(samples[0]);
+            const dataUrl = `data:image/png;base64,${base64Image}`;
+
+            // Show preview only - don't save to form yet
+            setScannedPreview(dataUrl);
+            setScannedBase64(base64Image);
+            setIsCaptured(false);
+            setScannerStatus('Fingerprint scanned - click Capture to save');
+        };
+
+        // Enumerate readers and auto-start if one is found
+        sdk.enumerateDevices().then((readers) => {
+            setScannerReaders(readers);
+            setScannerReady(true);
+
+            if (readers.length === 0) {
+                setScannerStatus('No scanner detected - please connect a scanner');
+            } else if (readers.length === 1) {
+                setSelectedReader(readers[0]);
+                // Auto-start scanning
+                sdk.startAcquisition(window.Fingerprint.SampleFormat.PngImage, readers[0]).then(() => {
+                    setIsScanning(true);
+                    setScannerStatus('Scanner ready - place your finger on the scanner');
+                }).catch(() => {
+                    setScannerStatus('Scanner ready - click Start Scan');
+                });
+            } else {
+                setScannerStatus('Multiple scanners found - select one below');
+            }
+        }).catch(() => {
+            setScannerStatus('Failed to detect scanners');
+        });
+    }, [form]);
+
+    const startScan = useCallback(() => {
+        if (!sdkRef.current || !selectedReader) return;
+
+        // Reset previous scan
+        setScannedPreview(null);
+        setScannedBase64(null);
+        setIsCaptured(false);
+        setFingerprintImage(null);
+        form.setData('finger_template', '');
+
+        sdkRef.current.startAcquisition(window.Fingerprint.SampleFormat.PngImage, selectedReader).then(() => {
+            setIsScanning(true);
+            setScannerStatus('Place your finger on the scanner...');
+            setScanQuality('');
+        }).catch((error: Error) => {
+            setScannerStatus(error.message || 'Failed to start scanning');
+        });
+    }, [selectedReader, form]);
+
+    const stopScan = useCallback(() => {
+        if (!sdkRef.current) return;
+
+        sdkRef.current.stopAcquisition().then(() => {
+            setIsScanning(false);
+            if (scannedPreview) {
+                setScannerStatus('Scanning stopped - click Capture to save');
+            } else {
+                setScannerStatus('Scanning stopped');
+            }
+        }).catch(() => {});
+    }, [scannedPreview]);
+
+    const captureFingerprint = useCallback(() => {
+        if (!scannedBase64 || !scannedPreview) return;
+
+        form.setData('finger_template', scannedBase64);
+        setFingerprintImage(scannedPreview);
+        setIsCaptured(true);
+        setScannerStatus('Fingerprint captured successfully');
+
+        // Stop scanning if still active
+        if (sdkRef.current && isScanning) {
+            sdkRef.current.stopAcquisition().then(() => setIsScanning(false)).catch(() => {});
+        }
+    }, [scannedBase64, scannedPreview, form, isScanning]);
+
+    const clearFingerprint = useCallback(() => {
+        setFingerprintImage(null);
+        setScannedPreview(null);
+        setScannedBase64(null);
+        setIsCaptured(false);
+        form.setData('finger_template', '');
+        setScannerStatus('Scanner ready - click Start Scan');
+        setScanQuality('');
+    }, [form]);
+
+    // Cleanup scanner on unmount
+    useEffect(() => {
+        return () => {
+            if (sdkRef.current) {
+                sdkRef.current.stopAcquisition().catch(() => {});
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (navigator.geolocation) {
@@ -112,6 +290,8 @@ return;
 return;
 }
 
+        ctx.translate(480, 0);
+        ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0, 480, 640);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
         const base64 = dataUrl.split(',')[1];
@@ -142,21 +322,6 @@ return;
         reader.readAsDataURL(file);
     };
 
-    const captureFromScanner = () => {
-        try {
-            const imageSrc = localStorage.getItem('imageSrc');
-
-            if (imageSrc) {
-                const base64 = imageSrc.split(',')[1] || imageSrc;
-                form.setData('finger_template', base64);
-                setFingerprintImage(imageSrc.startsWith('data:') ? imageSrc : `data:image/png;base64,${imageSrc}`);
-            } else {
-                alert('No fingerprint captured. Please scan a fingerprint first.');
-            }
-        } catch {
-            alert('Unable to read fingerprint data from scanner.');
-        }
-    };
 
     const submit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -222,12 +387,12 @@ return;
                     <Card>
                         <CardHeader>
                             <CardTitle>Fingerprint Data</CardTitle>
-                            <CardDescription>Capture fingerprint using the Digital Persona scanner</CardDescription>
+                            <CardDescription>Select finger, then scan using the Digital Persona scanner</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
-                                    <Label htmlFor="finger_index">Finger Index</Label>
+                                    <Label htmlFor="finger_index">Finger Index *</Label>
                                     <select id="finger_index" className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm" value={form.data.finger_index} onChange={(e) => form.setData('finger_index', e.target.value)}>
                                         <option value="">Select Finger</option>
                                         {fingerIndexes.map((f) => (
@@ -237,7 +402,7 @@ return;
                                     <InputError message={formErrors.finger_index} />
                                 </div>
                                 <div>
-                                    <Label htmlFor="template_type">Template Type</Label>
+                                    <Label htmlFor="template_type">Template Type *</Label>
                                     <select id="template_type" className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm" value={form.data.template_type} onChange={(e) => form.setData('template_type', e.target.value)}>
                                         <option value="">Select Type</option>
                                         {templateTypes.map((t) => (
@@ -246,25 +411,96 @@ return;
                                     </select>
                                     <InputError message={formErrors.template_type} />
                                 </div>
-                                <div className="flex items-end">
-                                    <Button type="button" variant="outline" onClick={captureFromScanner}>
-                                        Capture from Scanner
-                                    </Button>
-                                </div>
                             </div>
 
-                            {fingerprintImage && (
-                                <div className="flex items-center gap-4">
-                                    <img src={fingerprintImage} alt="Fingerprint" className="h-32 w-auto rounded border" />
-                                    <span className="text-sm text-green-600">Fingerprint captured</span>
+                            {/* Scanner Controls & Preview */}
+                            {scannerReaders.length > 1 && (
+                                <div>
+                                    <Label htmlFor="scanner_reader">Select Scanner</Label>
+                                    <select id="scanner_reader" className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm" value={selectedReader} onChange={(e) => setSelectedReader(e.target.value)}>
+                                        <option value="">Select Scanner</option>
+                                        {scannerReaders.map((r) => (
+                                            <option key={r} value={r}>Digital Persona ({r})</option>
+                                        ))}
+                                    </select>
                                 </div>
                             )}
 
-                            <div>
-                                <Label htmlFor="finger_template">Finger Template (Base64)</Label>
-                                <textarea id="finger_template" className="border-input bg-background flex min-h-[60px] w-full rounded-md border px-3 py-2 text-xs font-mono" value={form.data.finger_template} onChange={(e) => form.setData('finger_template', e.target.value)} rows={3} placeholder="Base64 encoded fingerprint template..." />
-                                <InputError message={formErrors.finger_template} />
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                {/* Left: Controls & Status */}
+                                <div className="flex flex-col gap-3">
+                                    {/* Status */}
+                                    <div className={`rounded-md border px-3 py-2 text-sm ${isScanning ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300' : isCaptured ? 'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-300' : 'border-input bg-muted/30 text-muted-foreground'}`}>
+                                        {scannerStatus}
+                                        {isScanning && (
+                                            <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+                                        )}
+                                    </div>
+
+                                    {scanQuality && (
+                                        <p className="text-sm"><span className="text-muted-foreground">Scan Quality:</span> <span className="font-medium">{scanQuality}</span></p>
+                                    )}
+
+                                    {/* Buttons */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {!isScanning ? (
+                                            <Button type="button" onClick={startScan} disabled={!scannerReady || !selectedReader}>
+                                                Start Scan
+                                            </Button>
+                                        ) : (
+                                            <Button type="button" variant="outline" onClick={stopScan}>
+                                                Stop Scan
+                                            </Button>
+                                        )}
+
+                                        {scannedPreview && !isCaptured && (
+                                            <Button type="button" onClick={captureFingerprint}>
+                                                Capture
+                                            </Button>
+                                        )}
+
+                                        {(scannedPreview || isCaptured) && (
+                                            <Button type="button" variant="outline" onClick={clearFingerprint}>
+                                                Clear
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    <InputError message={formErrors.finger_template} />
+                                </div>
+
+                                {/* Right: Fingerprint Preview */}
+                                <div className="flex flex-col gap-2">
+                                    <div className={`flex flex-1 items-center justify-center rounded-md border ${isCaptured ? 'border-green-300 dark:border-green-700' : scannedPreview ? 'border-blue-300 dark:border-blue-700' : ''} bg-muted/30`} style={{ minHeight: '240px' }}>
+                                        {scannedPreview || fingerprintImage ? (
+                                            <img src={scannedPreview || fingerprintImage || ''} alt="Fingerprint" className="max-h-56 w-auto rounded p-2" />
+                                        ) : (
+                                            <div className="text-muted-foreground flex flex-col items-center gap-2 p-6 text-center text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="opacity-30">
+                                                    <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" />
+                                                    <path d="M14 13.12c0 2.38 0 6.38-1 8.88" />
+                                                    <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02" />
+                                                    <path d="M2 12a10 10 0 0 1 18-6" />
+                                                    <path d="M2 16h.01" />
+                                                    <path d="M21.8 16c.2-2 .131-5.354 0-6" />
+                                                    <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2" />
+                                                    <path d="M8.65 22c.21-.66.45-1.32.57-2" />
+                                                    <path d="M9 6.8a6 6 0 0 1 9 5.2v2" />
+                                                </svg>
+                                                <span>Place finger on scanner</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {isCaptured && (
+                                        <p className="text-center text-sm font-medium text-green-600">Fingerprint captured successfully</p>
+                                    )}
+                                    {scannedPreview && !isCaptured && (
+                                        <p className="text-center text-sm font-medium text-blue-600">Scanned - click Capture to save</p>
+                                    )}
+                                </div>
                             </div>
+
+                            <input type="hidden" name="finger_template" value={form.data.finger_template} readOnly />
                         </CardContent>
                     </Card>
 
@@ -275,44 +511,60 @@ return;
                             <CardDescription>Capture from camera or upload citizen photograph (JPEG, max 30KB, 480x640 recommended)</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* Live Camera */}
-                            <div>
-                                <Label>Live Camera</Label>
-                                <div className="mt-1 flex items-center gap-2">
-                                    {!isCameraOpen ? (
-                                        <Button type="button" variant="outline" onClick={startCamera}>Open Camera</Button>
-                                    ) : (
-                                        <>
-                                            <Button type="button" onClick={captureFromCamera}>Capture Photo</Button>
-                                            <Button type="button" variant="outline" onClick={stopCamera}>Close Camera</Button>
-                                        </>
-                                    )}
-                                </div>
-                                {isCameraOpen && (
-                                    <div className="mt-2">
-                                        <video ref={videoRef} autoPlay playsInline muted className="h-64 w-auto rounded border bg-black" />
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                {/* Camera / Upload */}
+                                <div className="space-y-3">
+                                    <div>
+                                        <Label>Live Camera</Label>
+                                        <div className="mt-1 flex items-center gap-2">
+                                            {!isCameraOpen ? (
+                                                <Button type="button" variant="outline" onClick={startCamera}>Open Camera</Button>
+                                            ) : (
+                                                <>
+                                                    <Button type="button" onClick={captureFromCamera}>Capture Photo</Button>
+                                                    <Button type="button" variant="outline" onClick={stopCamera}>Close Camera</Button>
+                                                </>
+                                            )}
+                                        </div>
+                                        {isCameraOpen && (
+                                            <div className="mt-2">
+                                                <video ref={videoRef} autoPlay playsInline muted className="h-64 w-auto rounded border bg-black" style={{ transform: 'scaleX(-1)' }} />
+                                            </div>
+                                        )}
+                                        <canvas ref={canvasRef} className="hidden" />
                                     </div>
-                                )}
-                                <canvas ref={canvasRef} className="hidden" />
+
+                                    <div>
+                                        <Label htmlFor="photo_file">Or Upload Photo</Label>
+                                        <Input id="photo_file" type="file" accept="image/jpeg,image/jpg" onChange={handlePhotographUpload} />
+                                        <p className="text-muted-foreground mt-1 text-xs">Max 30KB, JPEG format, 480x640 pixels recommended</p>
+                                    </div>
+                                </div>
+
+                                {/* Preview */}
+                                <div className="flex flex-col gap-2">
+                                    <Label>Captured Photo</Label>
+                                    <div className="bg-muted/30 flex flex-1 items-center justify-center rounded-md border">
+                                        {photographImage ? (
+                                            <img src={photographImage} alt="Photograph" className="max-h-64 w-auto rounded p-2" />
+                                        ) : (
+                                            <div className="text-muted-foreground flex flex-col items-center gap-2 p-6 text-center text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
+                                                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                                                    <circle cx="12" cy="13" r="3" />
+                                                </svg>
+                                                <span>No photo captured yet</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {photographImage && (
+                                        <p className="text-center text-sm font-medium text-green-600">Photo captured successfully</p>
+                                    )}
+                                    <InputError message={formErrors.photograph} />
+                                </div>
                             </div>
 
-                            {/* File Upload */}
-                            <div>
-                                <Label htmlFor="photo_file">Or Upload Photo</Label>
-                                <Input id="photo_file" type="file" accept="image/jpeg,image/jpg" onChange={handlePhotographUpload} />
-                                <p className="text-xs text-muted-foreground mt-1">Max 30KB, JPEG format, 480×640 pixels recommended</p>
-                            </div>
-                            {photographImage && (
-                                <div className="flex items-center gap-4">
-                                    <img src={photographImage} alt="Photograph" className="h-32 w-auto rounded border" />
-                                    <span className="text-sm text-green-600">Photo loaded</span>
-                                </div>
-                            )}
-                            <div>
-                                <Label htmlFor="photograph">Photograph (Base64)</Label>
-                                <textarea id="photograph" className="border-input bg-background flex min-h-[60px] w-full rounded-md border px-3 py-2 text-xs font-mono" value={form.data.photograph} onChange={(e) => form.setData('photograph', e.target.value)} rows={3} placeholder="Base64 encoded JPEG photograph..." />
-                                <InputError message={formErrors.photograph} />
-                            </div>
+                            <input type="hidden" name="photograph" value={form.data.photograph} readOnly />
                         </CardContent>
                     </Card>
 
@@ -356,21 +608,6 @@ return;
                         </CardContent>
                     </Card>
 
-                    {/* Fingerprint Scanner (iframe) */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Fingerprint Scanner</CardTitle>
-                            <CardDescription>Digital Persona fingerprint scanner interface (requires Windows desktop app)</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <iframe
-                                ref={scannerRef}
-                                src="/fingerprint-scanner/index.html"
-                                className="h-[500px] w-full rounded border"
-                                title="Fingerprint Scanner"
-                            />
-                        </CardContent>
-                    </Card>
 
                     <div className="flex gap-2">
                         <Button type="submit" disabled={form.processing}>

@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Pencil, Printer, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { Pencil, Printer, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
 import { useEffect } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { ConfirmModal, useConfirmModal } from '@/components/confirm-modal';
@@ -328,40 +328,43 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                 <div className="flex items-center justify-between">
                     <Heading title={`Verification #${verification.id}`} description={`CNIC: ${verification.citizen_number}`} />
                     <div className="no-print flex gap-2">
-                        <Button
-                            size="sm"
-                            onClick={handlePrint}
-                            className="h-9 w-9 border border-black bg-black p-0 text-white shadow-sm transition hover:bg-black/90"
-                            aria-label="Print report"
-                            title="Print report"
-                        >
-                            <Printer className="h-4 w-4" />
-                        </Button>
                         {auth?.can?.callNadraApi && (
                             <>
-                                <Button size="sm" onClick={handleCallApi} className="h-9 gap-2">
-                                    <Send className="h-4 w-4" />
-                                    Call NADRA API
+                                <Button size="sm" onClick={handleCallApi} className="gap-2">
+                                    <ShieldCheck className="h-4 w-4" />
+                                    Verify
                                 </Button>
                                 {verification.session_id && (
-                                    <Button variant="outline" size="sm" onClick={handleGetLastResult} className="h-9 gap-2">
+                                    <Button variant="outline" size="sm" onClick={handleGetLastResult} className="gap-2">
                                         <RefreshCw className="h-4 w-4" />
                                         Get Last Result
                                     </Button>
                                 )}
                             </>
                         )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePrint}
+                            className="gap-2"
+                            aria-label="Print report"
+                            title="Print report"
+                        >
+                            <Printer className="h-4 w-4" />
+                            Print
+                        </Button>
                         {Boolean(auth?.can?.updateNadraVerifications) && (
                             <Button
                                 variant="outline"
                                 size="sm"
                                 asChild
-                                className="h-9 w-9 border border-black p-0"
+                                className="gap-2"
                                 aria-label="Edit verification"
                                 title="Edit verification"
                             >
                                 <Link href={`/nadra-verifications/${verification.id}/edit`}>
                                     <Pencil className="h-4 w-4" />
+                                    Edit
                                 </Link>
                             </Button>
                         )}
@@ -370,11 +373,12 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                                 variant="destructive"
                                 size="sm"
                                 onClick={handleDelete}
-                                className="h-9 w-9 p-0"
+                                className="gap-2"
                                 aria-label="Delete verification"
                                 title="Delete verification"
                             >
                                 <Trash2 className="h-4 w-4" />
+                                Delete
                             </Button>
                         )}
                     </div>
@@ -491,17 +495,19 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                                 <p className="text-sm font-medium text-muted-foreground">Template Type</p>
                                 <p>{verification.template_type || '-'}</p>
                             </div>
-                            <div>
-                                <p className="text-sm font-medium text-muted-foreground">Has Fingerprint</p>
-                                <p>{verification.finger_template ? 'Yes' : 'No'}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-muted-foreground">Has Photograph</p>
-                                <p>{verification.photograph ? 'Yes' : 'No'}</p>
-                            </div>
+                            {verification.finger_template && (
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Fingerprint</p>
+                                    <img
+                                        src={`data:image/png;base64,${verification.finger_template}`}
+                                        alt="Fingerprint"
+                                        className="mt-1 h-32 w-auto rounded border"
+                                    />
+                                </div>
+                            )}
                             {verification.photograph && (
                                 <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Photograph Preview</p>
+                                    <p className="text-sm font-medium text-muted-foreground">Photograph</p>
                                     <img
                                         src={`data:image/jpeg;base64,${verification.photograph}`}
                                         alt="Citizen Photo"
