@@ -3,6 +3,8 @@
 use App\Models\NadraVerification;
 use App\Models\User;
 use Database\Seeders\NadraEnumerationsSeeder;
+use Illuminate\Http\Client\Request as ClientRequest;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -236,6 +238,91 @@ test('admin can update a verification record', function (): void {
         'citizen_number' => '1234567890123',
         'area_name' => 'SINDH',
     ]);
+});
+
+test('admin can call nadra verify api with mbvs standard payload', function (): void {
+    config([
+        'nadra.api_host' => 'https://stagendel.nadra.gov.pk',
+        'nadra.verify_url' => '/mbvs/v1/mbvsstandard/verifymbvs',
+        'nadra.client_id' => 'client-id',
+        'nadra.access_token' => 'test-access-token',
+        'nadra.authorization_scheme' => '',
+        'nadra.franchisee_id' => '6820',
+    ]);
+
+    Http::fake([
+        'https://stagendel.nadra.gov.pk/mbvs/v1/mbvsstandard/verifymbvs' => Http::response([
+            'sessionId' => 'nadra-session-id',
+            'responseStatus' => [
+                'code' => '100',
+                'message' => 'successful',
+            ],
+            'modalityResult' => [
+                'facialResult' => 'MATCH',
+                'fingerprintResult' => 'MATCH',
+            ],
+            'citizenData' => [
+                'name' => 'Test Citizen',
+            ],
+            'fingerIndex' => ['RIGHT_THUMB'],
+        ], 200, ['Content-Type' => 'text/plain']),
+    ]);
+
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $record = NadraVerification::factory()->create([
+        'session_id' => null,
+        'transaction_id' => '6820778146332862003',
+        'citizen_number' => '8224343808313',
+        'citizen_contact_number' => '03008169924',
+        'finger_index' => 'RIGHT_THUMB',
+        'template_type' => 'RAW_IMAGE',
+        'finger_template' => 'finger-template-base64',
+        'photograph' => 'photograph-base64',
+        'area_name' => 'AZAD_KASHMIR',
+        'client_branch_id' => '00001',
+        'client_session_id' => 'a18b-fe2e-4a6d-8ab7-658ab',
+        'client_machine_identifier' => 'HO-IT-Marchal',
+        'client_timestamp' => '2026-05-07T09:32:12.8620554Z',
+        'longitude' => '33.70',
+        'latitude' => '73.41',
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('nadra-verifications.call-api', $record))
+        ->assertRedirect(route('nadra-verifications.show', $record));
+
+    Http::assertSent(function (ClientRequest $request): bool {
+        return $request->url() === 'https://stagendel.nadra.gov.pk/mbvs/v1/mbvsstandard/verifymbvs'
+            && $request->hasHeader('X-IBM-Client-Id', 'client-id')
+            && $request->hasHeader('Content-Type', 'application/json')
+            && $request->hasHeader('Accept', 'text/plain')
+            && $request->hasHeader('Authorization', 'test-access-token')
+            && $request['franchiseeId'] === '6820'
+            && $request['sessionId'] === null
+            && $request['transactionId'] === '6820778146332862003'
+            && $request['citizenNumber'] === '8224343808313'
+            && $request['citizenContactNumber'] === '03008169924'
+            && $request['fingerIndex'] === 'RIGHT_THUMB'
+            && $request['templateType'] === 'RAW_IMAGE'
+            && $request['fingerTemplate'] === 'finger-template-base64'
+            && $request['areaName'] === 'azad_kashmir'
+            && $request['clientBranchId'] === '00001'
+            && $request['clientSessionId'] === 'a18b-fe2e-4a6d-8ab7-658ab'
+            && $request['clientMachineIdentifier'] === 'HO-IT-Marchal'
+            && $request['clientTimestamp'] === '2026-05-07T09:32:12.8620554Z'
+            && is_string($request['longitude'])
+            && is_string($request['latitude'])
+            && $request['photograph'] === 'photograph-base64';
+    });
+
+    $record->refresh();
+
+    expect($record->response_code)->toBe('100')
+        ->and($record->is_successful)->toBeTrue()
+        ->and($record->raw_request['clientTimestamp'])->toBe('2026-05-07T09:32:12.8620554Z')
+        ->and($record->raw_request)->not->toHaveKey('clientTimeStamp');
 });
 
 // --- CRUD delete ---

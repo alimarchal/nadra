@@ -220,8 +220,8 @@ class NadraVerificationController extends Controller implements HasMiddleware
             $service = app(NadraApiService::class);
 
             $payload = [
-                'sessionId' => $nadraVerification->session_id ?? '',
                 'franchiseeId' => config('nadra.franchisee_id'),
+                'sessionId' => $nadraVerification->session_id,
                 'transactionId' => $nadraVerification->transaction_id,
                 'citizenNumber' => $nadraVerification->citizen_number,
                 'citizenContactNumber' => $nadraVerification->citizen_contact_number ?? '',
@@ -231,11 +231,11 @@ class NadraVerificationController extends Controller implements HasMiddleware
                 'photograph' => $nadraVerification->photograph,
                 'areaName' => strtolower($nadraVerification->area_name),
                 'clientBranchId' => $nadraVerification->client_branch_id,
-                'clientMachineIdentifier' => $nadraVerification->client_machine_identifier,
                 'clientSessionId' => $nadraVerification->client_session_id,
-                'clientTimeStamp' => $nadraVerification->client_timestamp,
-                'latitude' => (float) $nadraVerification->latitude,
-                'longitude' => (float) $nadraVerification->longitude,
+                'clientMachineIdentifier' => $nadraVerification->client_machine_identifier,
+                'clientTimestamp' => $nadraVerification->client_timestamp,
+                'longitude' => $nadraVerification->longitude,
+                'latitude' => $nadraVerification->latitude,
             ];
 
             $response = $service->verify($payload);

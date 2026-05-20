@@ -22,6 +22,10 @@ class NadraApiService
 
     private string $clientSecret;
 
+    private ?string $accessToken;
+
+    private string $authorizationScheme;
+
     private string $franchiseeId;
 
     private string $scope;
@@ -34,6 +38,8 @@ class NadraApiService
         $this->lastResultUrl = config('nadra.last_result_url');
         $this->clientId = config('nadra.client_id');
         $this->clientSecret = config('nadra.client_secret');
+        $this->accessToken = config('nadra.access_token');
+        $this->authorizationScheme = config('nadra.authorization_scheme', '');
         $this->franchiseeId = config('nadra.franchisee_id');
         $this->scope = config('nadra.scope');
     }
@@ -86,8 +92,6 @@ class NadraApiService
      */
     public function verify(array $payload): array
     {
-        $token = $this->getAccessToken();
-
         $payload['franchiseeId'] = $this->franchiseeId;
 
         Log::channel('daily')->info('NADRA MBVS Verify Request', [
@@ -96,12 +100,13 @@ class NadraApiService
         ]);
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer '.($token['access_token'] ?? ''),
+            'Authorization' => $this->authorizationHeader(),
             'X-IBM-Client-Id' => $this->clientId,
             'Content-Type' => 'application/json',
+            'Accept' => 'text/plain',
         ])
             ->timeout(30)
-            ->post($this->apiHost.$this->verifyUrl, $payload)
+            ->post($this->url($this->verifyUrl), $payload)
             ->throw();
 
         $result = $response->json();
@@ -125,17 +130,16 @@ class NadraApiService
      */
     public function getLastVerificationResult(array $payload): array
     {
-        $token = $this->getAccessToken();
-
         $payload['franchiseeId'] = $this->franchiseeId;
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer '.($token['access_token'] ?? ''),
+            'Authorization' => $this->authorizationHeader(),
             'X-IBM-Client-Id' => $this->clientId,
             'Content-Type' => 'application/json',
+            'Accept' => 'text/plain',
         ])
             ->timeout(30)
-            ->post($this->apiHost.$this->lastResultUrl, $payload)
+            ->post($this->url($this->lastResultUrl), $payload)
             ->throw();
 
         return $response->json();
@@ -155,5 +159,22 @@ class NadraApiService
     public function invalidateToken(): void
     {
         Cache::forget('nadra_access_token');
+    }
+
+    private function authorizationHeader(): string
+    {
+        $token = $this->accessToken ?: ($this->getAccessToken()['access_token'] ?? '');
+        $scheme = trim($this->authorizationScheme);
+
+        return $scheme === '' ? $token : $scheme.' '.$token;
+    }
+
+    private function url(string $path): string
+    {
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return rtrim($this->apiHost, '/').'/'.ltrim($path, '/');
     }
 }
