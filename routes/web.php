@@ -13,7 +13,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->group(function (): void {
             Route::resource('users', UserController::class)->except(['show']);
         });
-
+ 
     Route::middleware('permission:nadra-verification.view|nadra-verification.create|nadra-verification.update|nadra-verification.delete')
         ->group(function (): void {
             Route::resource('nadra-verifications', NadraVerificationController::class);
