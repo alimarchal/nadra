@@ -909,9 +909,6 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                     ) : (
                         <pre className="print-pre">-</pre>
                     )}
-
-                    <h2 className="print-section-title">Raw Response</h2>
-                    <pre className="print-pre">{jsonOrDash(verification.raw_response)}</pre>
                 </div>
 
                 <div className="no-print flex gap-2">
