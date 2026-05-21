@@ -146,11 +146,15 @@ class NadraApiService
     }
 
     /**
-     * Generate a unique transaction ID: franchiseeId + 15 numeric digits.
+     * Generate a unique transaction ID: franchiseeId + 13-digit millisecond timestamp + 2 random digits.
+     * Timestamp-based prefix ensures no collision with previously used IDs.
      */
     public function generateTransactionId(): string
     {
-        return $this->franchiseeId.str_pad((string) random_int(0, 999999999999999), 15, '0', STR_PAD_LEFT);
+        $milliseconds = (string) (int) round(microtime(true) * 1000);
+        $random = str_pad((string) random_int(0, 99), 2, '0', STR_PAD_LEFT);
+
+        return $this->franchiseeId.$milliseconds.$random;
     }
 
     /**
