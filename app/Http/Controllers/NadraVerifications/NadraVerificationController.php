@@ -219,10 +219,12 @@ class NadraVerificationController extends Controller implements HasMiddleware
         try {
             $service = app(NadraApiService::class);
 
+            $transactionId = $service->generateTransactionId();
+
             $payload = [
                 'franchiseeId' => config('nadra.franchisee_id'),
                 'sessionId' => $nadraVerification->session_id,
-                'transactionId' => $nadraVerification->transaction_id,
+                'transactionId' => $transactionId,
                 'citizenNumber' => $nadraVerification->citizen_number,
                 'citizenContactNumber' => $nadraVerification->citizen_contact_number ?? '',
                 'fingerIndex' => $nadraVerification->finger_index,
@@ -253,6 +255,7 @@ class NadraVerificationController extends Controller implements HasMiddleware
             ]);
 
             $nadraVerification->update([
+                'transaction_id' => $transactionId,
                 'session_id' => $response['sessionId'] ?? $nadraVerification->session_id,
                 'response_code' => $response['responseStatus']['code'] ?? null,
                 'response_message' => $response['responseStatus']['message'] ?? null,
