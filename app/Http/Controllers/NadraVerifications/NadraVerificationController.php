@@ -223,7 +223,7 @@ class NadraVerificationController extends Controller implements HasMiddleware
 
             $payload = [
                 'franchiseeId' => config('nadra.franchisee_id'),
-                'sessionId' => $nadraVerification->session_id,
+                'sessionId' => null,
                 'transactionId' => $transactionId,
                 'citizenNumber' => $nadraVerification->citizen_number,
                 'citizenContactNumber' => $nadraVerification->citizen_contact_number ?? '',
