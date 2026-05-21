@@ -36,7 +36,17 @@ type Verification = {
     response_message: string | null;
     facial_result: string | null;
     fingerprint_result: string | null;
-    citizen_data: Record<string, unknown> | null;
+    citizen_data: {
+        name?: string;
+        fatherHusbandName?: string;
+        cardType?: string;
+        presentAddress?: string;
+        permanentAddress?: string;
+        dateOfBirth?: string;
+        birthPlace?: string;
+        photograph?: string;
+        expiryDate?: string;
+    } | null;
     available_fingers: string[] | null;
     raw_request: Record<string, unknown> | null;
     raw_response: Record<string, unknown> | null;
@@ -602,16 +612,59 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                     </CardContent>
                     </Card>
 
-                    {verification.citizen_data && Object.keys(verification.citizen_data).length > 0 && (
+                    {verification.citizen_data && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Citizen Data (from NADRA)</CardTitle>
                                 <CardDescription>Data returned by NADRA upon successful verification</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <pre className="bg-muted rounded p-4 text-sm overflow-auto max-h-96">
-                                    {JSON.stringify(verification.citizen_data, null, 2)}
-                                </pre>
+                                <div className="flex flex-col gap-6 md:flex-row">
+                                    {verification.citizen_data.photograph && (
+                                        <div className="flex shrink-0 flex-col items-center gap-2">
+                                            <img
+                                                src={`data:image/jpeg;base64,${verification.citizen_data.photograph}`}
+                                                alt="NADRA Citizen Photo"
+                                                className="h-48 w-36 rounded border object-cover shadow"
+                                            />
+                                            <span className="text-xs text-muted-foreground">NADRA Photo</span>
+                                        </div>
+                                    )}
+                                    <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Name</p>
+                                            <p className="font-semibold" dir="rtl">{verification.citizen_data.name ?? '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Father / Husband Name</p>
+                                            <p dir="rtl">{verification.citizen_data.fatherHusbandName ?? '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
+                                            <p>{verification.citizen_data.dateOfBirth ?? '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Birth Place</p>
+                                            <p dir="rtl">{verification.citizen_data.birthPlace ?? '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Card Type</p>
+                                            <p className="uppercase">{verification.citizen_data.cardType ?? '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Expiry Date</p>
+                                            <p>{verification.citizen_data.expiryDate ?? '-'}</p>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <p className="text-sm font-medium text-muted-foreground">Present Address</p>
+                                            <p dir="rtl">{verification.citizen_data.presentAddress ?? '-'}</p>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <p className="text-sm font-medium text-muted-foreground">Permanent Address</p>
+                                            <p dir="rtl">{verification.citizen_data.permanentAddress ?? '-'}</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
                     )}
@@ -741,7 +794,8 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                     <table className="print-table print-media-table">
                         <thead>
                             <tr>
-                                <th>Citizen Photograph</th>
+                                <th>NADRA Citizen Photo</th>
+                                <th>Submitted Photograph</th>
                                 <th>Fingerprint Image</th>
                             </tr>
                         </thead>
@@ -749,14 +803,27 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                             <tr>
                                 <td>
                                     <div className="print-media-frame">
-                                        {verification.photograph ? (
+                                        {verification.citizen_data?.photograph ? (
                                             <img
-                                                src={`data:image/jpeg;base64,${verification.photograph}`}
-                                                alt="Citizen Photograph"
+                                                src={`data:image/jpeg;base64,${verification.citizen_data.photograph}`}
+                                                alt="NADRA Citizen Photo"
                                                 className="print-media-img"
                                             />
                                         ) : (
-                                            <div className="print-media-empty">Photograph not available</div>
+                                            <div className="print-media-empty">Not available</div>
+                                        )}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div className="print-media-frame">
+                                        {verification.photograph ? (
+                                            <img
+                                                src={`data:image/jpeg;base64,${verification.photograph}`}
+                                                alt="Submitted Photograph"
+                                                className="print-media-img"
+                                            />
+                                        ) : (
+                                            <div className="print-media-empty">Not available</div>
                                         )}
                                     </div>
                                 </td>
@@ -769,7 +836,7 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                                                 className="print-media-img"
                                             />
                                         ) : (
-                                            <div className="print-media-empty">Fingerprint not available</div>
+                                            <div className="print-media-empty">Not available</div>
                                         )}
                                     </div>
                                 </td>
@@ -807,8 +874,41 @@ export default function ShowNadraVerification({ verification, responseCodes, rep
                         </tbody>
                     </table>
 
-                    <h2 className="print-section-title">Citizen Data</h2>
-                    <pre className="print-pre">{jsonOrDash(verification.citizen_data)}</pre>
+                    <h2 className="print-section-title">Citizen Data (from NADRA)</h2>
+                    {verification.citizen_data ? (
+                        <table className="print-table">
+                            <tbody>
+                                <tr>
+                                    <th>Name</th>
+                                    <td dir="rtl">{verification.citizen_data.name ?? '-'}</td>
+                                    <th>Father / Husband</th>
+                                    <td dir="rtl">{verification.citizen_data.fatherHusbandName ?? '-'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Date of Birth</th>
+                                    <td>{verification.citizen_data.dateOfBirth ?? '-'}</td>
+                                    <th>Birth Place</th>
+                                    <td dir="rtl">{verification.citizen_data.birthPlace ?? '-'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Card Type</th>
+                                    <td>{verification.citizen_data.cardType ?? '-'}</td>
+                                    <th>Expiry Date</th>
+                                    <td>{verification.citizen_data.expiryDate ?? '-'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Present Address</th>
+                                    <td dir="rtl" colSpan={3}>{verification.citizen_data.presentAddress ?? '-'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Permanent Address</th>
+                                    <td dir="rtl" colSpan={3}>{verification.citizen_data.permanentAddress ?? '-'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    ) : (
+                        <pre className="print-pre">-</pre>
+                    )}
 
                     <h2 className="print-section-title">Raw Request</h2>
                     <pre className="print-pre">{jsonOrDash(verification.raw_request)}</pre>
