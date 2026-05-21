@@ -242,17 +242,17 @@ class NadraVerificationController extends Controller implements HasMiddleware
 
             $response = $service->verify($payload);
 
-            dd([
-                'config' => [
-                    'api_host' => config('nadra.api_host'),
-                    'verify_url' => config('nadra.verify_url'),
-                    'authorization_scheme' => config('nadra.authorization_scheme'),
-                    'client_id' => config('nadra.client_id'),
-                    'access_token_set' => ! empty(config('nadra.access_token')),
-                ],
-                'payload' => $payload,
-                'response' => $response,
-            ]);
+            // dd([
+            //     'config' => [
+            //         'api_host' => config('nadra.api_host'),
+            //         'verify_url' => config('nadra.verify_url'),
+            //         'authorization_scheme' => config('nadra.authorization_scheme'),
+            //         'client_id' => config('nadra.client_id'),
+            //         'access_token_set' => ! empty(config('nadra.access_token')),
+            //     ],
+            //     'payload' => $payload,
+            //     'response' => $response,
+            // ]);
 
             $nadraVerification->update([
                 'transaction_id' => $transactionId,
