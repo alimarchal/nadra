@@ -104,8 +104,8 @@ class NadraVerificationController extends Controller implements HasMiddleware
         $validated = $request->validated();
 
         try {
-            DB::transaction(function () use ($validated, $request): void {
-                NadraVerification::query()->create([
+            $nadraVerification = DB::transaction(function () use ($validated, $request): NadraVerification {
+                return NadraVerification::query()->create([
                     'user_id' => $request->user()->id,
                     'session_id' => $validated['session_id'] ?? null,
                     'citizen_number' => $validated['citizen_number'],
@@ -125,7 +125,7 @@ class NadraVerificationController extends Controller implements HasMiddleware
                 ]);
             });
 
-            return to_route('nadra-verifications.index')->with('success', 'Verification record created successfully.');
+            return to_route('nadra-verifications.show', $nadraVerification)->with('success', 'Verification record created successfully.');
         } catch (Throwable $exception) {
             report($exception);
 
